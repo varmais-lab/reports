@@ -1,0 +1,8 @@
+{
+  "_comment": "Maintenance % per department. This is the single source of truth — edit these values and every department's weekly report + the admin dashboard will pick up the new % automatically. No code changes needed.",
+  "women": 5,
+  "health": 5,
+  "devotion": 5,
+  "news": 5,
+  "business": 5
+}

@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SumanTV — Weekly Revenue & Expenditure Review</title>
+<style>
+  :root{
+    --bg:#0f1115;
+    --panel:#171a21;
+    --panel2:#1e222b;
+    --border:#2a2f3a;
+    --text:#e8eaed;
+    --muted:#9aa0ac;
+    --accent:#ff4d3d;
+    --accent2:#ffb020;
+    --good:#3ddc84;
+    --bad:#ff5c5c;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    padding:24px;
+    line-height:1.4;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+  header{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    flex-wrap:wrap;gap:12px;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:16px;
+  }
+  header h1{margin:0;font-size:22px;letter-spacing:.2px;}
+  header h1 span{color:var(--accent);}
+  header p{margin:4px 0 0;color:var(--muted);font-size:13px;}
+  .filebar{
+    display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:10px 12px;margin-bottom:20px;font-size:13px;
+  }
+  .filebar .status{color:var(--muted);flex:1;min-width:200px;}
+  .filebar .status b{color:var(--good);}
+  button{
+    cursor:pointer;border:1px solid var(--border);background:var(--panel2);color:var(--text);
+    padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;transition:.15s;
+  }
+  button:hover{border-color:var(--accent);}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  button.primary:hover{background:#e6432f;}
+  button.ghost{background:transparent;}
+  button.small{padding:5px 10px;font-size:12px;}
+  button.danger:hover{border-color:var(--bad);color:var(--bad);}
+  input[type=file]{display:none;}
+
+  .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:20px;}
+  @media(max-width:900px){.grid{grid-template-columns:1fr;}}
+
+  .card{
+    background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+    padding:18px 20px;margin-bottom:20px;
+  }
+  .card h2{margin:0 0 14px;font-size:15px;color:var(--accent2);text-transform:uppercase;letter-spacing:.6px;}
+  .card h3{margin:18px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+
+  .fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .field{display:flex;flex-direction:column;gap:4px;}
+  .field.full{grid-column:1/-1;}
+  .field label{font-size:12px;color:var(--muted);}
+  .field input,.field select{
+    background:var(--panel2);border:1px solid var(--border);color:var(--text);
+    padding:8px 10px;border-radius:7px;font-size:14px;
+  }
+  .field input:focus,.field select:focus{outline:none;border-color:var(--accent);}
+
+  .calc-line{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:3px 0;}
+  .calc-line b{color:var(--text);}
+  .pnl-box{
+    margin-top:12px;padding:12px 14px;border-radius:8px;background:var(--panel2);
+    display:flex;justify-content:space-between;align-items:center;font-size:15px;font-weight:600;
+  }
+  .pnl-box.pos{border:1px solid var(--good);color:var(--good);}
+  .pnl-box.neg{border:1px solid var(--bad);color:var(--bad);}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{text-align:left;padding:8px 8px;border-bottom:1px solid var(--border);}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;}
+  tr:hover td{background:rgba(255,255,255,.02);}
+  .plist{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+  .prow{display:grid;grid-template-columns:1fr 140px 32px;gap:8px;align-items:center;}
+
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+  .kpi{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;}
+  .kpi .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+  .kpi .value{font-size:18px;font-weight:700;margin-top:4px;}
+  .kpi .delta{font-size:12px;margin-top:2px;}
+  .delta.up{color:var(--good);} .delta.down{color:var(--bad);} .delta.flat{color:var(--muted);}
+
+  .tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;background:var(--panel2);border:1px solid var(--border);color:var(--muted);}
+  .row-actions{display:flex;gap:6px;}
+  .empty{color:var(--muted);font-size:13px;padding:20px 0;text-align:center;}
+  footer{color:var(--muted);font-size:12px;text-align:center;margin-top:30px;padding-top:16px;border-top:1px solid var(--border);}
+
+  @media print{
+    .filebar,.card.form-card,button{display:none !important;}
+    body{background:#fff;color:#000;padding:0;}
+    .card{border:1px solid #ccc;background:#fff;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>SumanTV <span>Weekly Revenue Review</span></h1>
+      <p>Department manager review — revenue, expenditure & week-over-week comparison</p>
+    </div>
+    <button class="ghost small" onclick="window.print()">🖨 Print for meeting</button>
+  </header>
+
+  <div class="filebar">
+    <span class="status" id="fileStatus">No data file connected — using local browser storage as backup.</span>
+    <button id="btnOpen" class="small">📂 Open JSON File</button>
+    <button id="btnCreate" class="small">➕ Create New JSON File</button>
+    <button id="btnExport" class="small">⬇ Export JSON</button>
+    <button id="btnImportTrigger" class="small">⬆ Import JSON</button>
+    <input type="file" id="btnImport" accept="application/json">
+  </div>
+
+  <div class="grid">
+    <!-- LEFT: FORM -->
+    <div>
+      <div class="card form-card">
+        <h2 id="formTitle">Add This Week's Data</h2>
+        <div class="fields">
+          <div class="field full">
+            <label>Week Label (e.g. "July 2nd Week 2026")</label>
+            <input type="text" id="weekLabel" placeholder="July 2nd Week 2026">
+          </div>
+        </div>
+
+        <h3>Revenue</h3>
+        <div class="fields">
+          <div class="field"><label>YouTube Revenue (₹)</label><input type="number" id="revYoutube" value="0"></div>
+          <div class="field"><label>Facebook Revenue (₹)</label><input type="number" id="revFacebook" value="0"></div>
+          <div class="field"><label>Advertisement Revenue (₹)</label><input type="number" id="revAd" value="0"></div>
+          <div class="field"><label>Courses Revenue (₹)</label><input type="number" id="revCourses" value="0"></div>
+        </div>
+        <div class="calc-line"><span>Total Revenue</span><b id="calcRevTotal">₹0</b></div>
+
+        <h3>Operational Expenditure</h3>
+        <div class="fields">
+          <div class="field"><label>Team Salaries (₹)</label><input type="number" id="opTeam" value="0"></div>
+          <div class="field"><label>Maintenance Percentage (%)</label><input type="number" id="opMaintPct" value="0"></div>
+        </div>
+        <div class="calc-line"><span>Maintenance Cost (Team Salaries × %)</span><b id="calcMaintCost">₹0</b></div>
+        <div class="calc-line"><span>Op-Ex Total (Salaries + Maintenance Cost)</span><b id="calcOpexTotal">₹0</b></div>
+
+        <div class="pnl-box" id="pnlBox">
+          <span>Profit & Loss (Revenue − Op-Ex)</span>
+          <span id="calcPnl">₹0</span>
+        </div>
+
+        <h3>Plan & Projections for Next Week</h3>
+        <div class="plist" id="projList"></div>
+        <button class="small" style="margin-top:8px;" onclick="addProjectionRow()">+ Add Projection</button>
+
+        <div style="margin-top:20px;display:flex;gap:10px;">
+          <button class="primary" onclick="saveWeek()" id="saveBtn">Save Week</button>
+          <button class="ghost" onclick="resetForm()">Clear Form</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: DASHBOARD -->
+    <div>
+      <div class="card">
+        <h2>This Week vs Previous Week</h2>
+        <div id="comparisonBox"><div class="empty">Add at least one week to see comparison.</div></div>
+      </div>
+
+      <div class="card">
+        <h2>Next Week's Plan & Projections</h2>
+        <div id="nextPlanBox"><div class="empty">No projections added yet.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Week History</h2>
+    <table id="historyTable">
+      <thead>
+        <tr><th>Week</th><th>Revenue</th><th>Op-Ex</th><th>P&L</th><th>Actions</th></tr>
+      </thead>
+      <tbody id="historyBody"></tbody>
+    </table>
+    <div class="empty" id="historyEmpty">No weeks recorded yet.</div>
+  </div>
+
+  <footer>SumanTV Internal Tool · Data stored locally in your chosen JSON file · Nothing is sent to any server</footer>
+</div>
+
+<datalist id="content-types">
+  <option value="Content">
+  <option value="Advertisement">
+  <option value="Podcast">
+  <option value="Shorts">
+  <option value="Retainer">
+  <option value="Brand Promotion">
+</datalist>
+
+<script>
+let state = { weeks: [] };
+let fileHandle = null;
+let editingId = null;
+let nextOrder = 1;
+
+const $ = id => document.getElementById(id);
+const fmt = n => '₹' + (Math.round(n||0)).toLocaleString('en-IN');
+
+/* ---------------- persistence ---------------- */
+function loadFromLocalStorage(){
+  try{
+    const raw = localStorage.getItem('sumantv_weekly_backup');
+    if(raw){ state = JSON.parse(raw); }
+  }catch(e){ console.error(e); }
+}
+async function writeState(){
+  localStorage.setItem('sumantv_weekly_backup', JSON.stringify(state));
+  if(fileHandle){
+    try{
+      const writable = await fileHandle.createWritable();
+      await writable.write(JSON.stringify(state, null, 2));
+      await writable.close();
+    }catch(e){ console.error('File write failed', e); }
+  }
+}
+function updateFileStatus(name){
+  $('fileStatus').innerHTML = name
+    ? `Connected to <b>${name}</b> — changes auto-save to this file.`
+    : 'No data file connected — using local browser storage as backup.';
+}
+
+const supportsFS = 'showOpenFilePicker' in window;
+if(!supportsFS){
+  $('btnOpen').style.display='none';
+  $('btnCreate').style.display='none';
+}
+
+$('btnOpen').onclick = async () => {
+  try{
+    [fileHandle] = await window.showOpenFilePicker({types:[{description:'JSON',accept:{'application/json':['.json']}}]});
+    const file = await fileHandle.getFile();
+    const text = await file.text();
+    state = text.trim() ? JSON.parse(text) : {weeks:[]};
+    updateFileStatus(fileHandle.name);
+    renderAll();
+  }catch(e){ if(e.name!=='AbortError') alert('Could not open file: '+e.message); }
+};
+$('btnCreate').onclick = async () => {
+  try{
+    fileHandle = await window.showSaveFilePicker({suggestedName:'sumantv-weekly-data.json', types:[{description:'JSON',accept:{'application/json':['.json']}}]});
+    await writeState();
+    updateFileStatus(fileHandle.name);
+  }catch(e){ if(e.name!=='AbortError') alert('Could not create file: '+e.message); }
+};
+$('btnExport').onclick = () => {
+  const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'sumantv-weekly-data.json';
+  a.click();
+};
+$('btnImportTrigger').onclick = () => $('btnImport').click();
+$('btnImport').onchange = (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      state = JSON.parse(reader.result);
+      writeState();
+      renderAll();
+    }catch(err){ alert('Invalid JSON file.'); }
+  };
+  reader.readAsText(file);
+};
+
+/* ---------------- projections form rows ---------------- */
+function addProjectionRow(title='', type=''){
+  const row = document.createElement('div');
+  row.className = 'prow';
+  row.innerHTML = `
+    <input type="text" placeholder="Projection title (e.g. Podcast with Dr Reddy Labs founder)" class="proj-title" value="${escapeHtml(title)}">
+    <input type="text" list="content-types" placeholder="Type" class="proj-type" value="${escapeHtml(type)}">
+    <button class="small ghost danger" onclick="this.parentElement.remove()">✕</button>
+  `;
+  $('projList').appendChild(row);
+}
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------------- live calc in form ---------------- */
+function liveCalc(){
+  const rev = getRevInputs();
+  const opex = getOpexInputs();
+  const revTotal = rev.youtube+rev.facebook+rev.advertisement+rev.courses;
+  const maintCost = opex.teamSalaries*(opex.maintenancePercent/100);
+  const opexTotal = opex.teamSalaries+maintCost;
+  const pnl = revTotal - opexTotal;
+
+  $('calcRevTotal').textContent = fmt(revTotal);
+  $('calcMaintCost').textContent = fmt(maintCost);
+  $('calcOpexTotal').textContent = fmt(opexTotal);
+  $('calcPnl').textContent = fmt(pnl);
+  const box = $('pnlBox');
+  box.className = 'pnl-box ' + (pnl>=0?'pos':'neg');
+}
+function getRevInputs(){
+  return {
+    youtube: parseFloat($('revYoutube').value)||0,
+    facebook: parseFloat($('revFacebook').value)||0,
+    advertisement: parseFloat($('revAd').value)||0,
+    courses: parseFloat($('revCourses').value)||0,
+  };
+}
+function getOpexInputs(){
+  return {
+    teamSalaries: parseFloat($('opTeam').value)||0,
+    maintenancePercent: parseFloat($('opMaintPct').value)||0,
+  };
+}
+['revYoutube','revFacebook','revAd','revCourses','opTeam','opMaintPct'].forEach(id=>{
+  $(id).addEventListener('input', liveCalc);
+});
+
+/* ---------------- compute helpers ---------------- */
+function computeWeek(w){
+  const revTotal = w.revenue.youtube+w.revenue.facebook+w.revenue.advertisement+w.revenue.courses;
+  const maintCost = w.opex.teamSalaries*(w.opex.maintenancePercent/100);
+  const opexTotal = w.opex.teamSalaries+maintCost;
+  const pnl = revTotal - opexTotal;
+  return {revTotal, maintCost, opexTotal, pnl};
+}
+
+/* ---------------- save / reset / edit / delete ---------------- */
+function saveWeek(){
+  const label = $('weekLabel').value.trim();
+  if(!label){ alert('Please enter a week label.'); return; }
+  const projections = Array.from(document.querySelectorAll('#projList .prow')).map(r=>({
+    title: r.querySelector('.proj-title').value.trim(),
+    type: r.querySelector('.proj-type').value.trim()
+  })).filter(p=>p.title);
+
+  const weekData = {
+    id: editingId || (Date.now()+''+Math.floor(Math.random()*1000)),
+    order: editingId ? state.weeks.find(w=>w.id===editingId).order : nextOrder++,
+    weekLabel: label,
+    revenue: getRevInputs(),
+    opex: getOpexInputs(),
+    projections
+  };
+
+  if(editingId){
+    const idx = state.weeks.findIndex(w=>w.id===editingId);
+    state.weeks[idx] = weekData;
+  } else {
+    state.weeks.push(weekData);
+  }
+  writeState();
+  resetForm();
+  renderAll();
+}
+function resetForm(){
+  editingId = null;
+  $('formTitle').textContent = "Add This Week's Data";
+  $('weekLabel').value='';
+  ['revYoutube','revFacebook','revAd','revCourses','opTeam','opMaintPct'].forEach(id=>$(id).value=0);
+  $('projList').innerHTML='';
+  liveCalc();
+}
+function editWeek(id){
+  const w = state.weeks.find(w=>w.id===id);
+  if(!w) return;
+  editingId = id;
+  $('formTitle').textContent = 'Edit Week: '+w.weekLabel;
+  $('weekLabel').value = w.weekLabel;
+  $('revYoutube').value = w.revenue.youtube;
+  $('revFacebook').value = w.revenue.facebook;
+  $('revAd').value = w.revenue.advertisement;
+  $('revCourses').value = w.revenue.courses;
+  $('opTeam').value = w.opex.teamSalaries;
+  $('opMaintPct').value = w.opex.maintenancePercent;
+  $('projList').innerHTML='';
+  (w.projections||[]).forEach(p=>addProjectionRow(p.title,p.type));
+  liveCalc();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function deleteWeek(id){
+  if(!confirm('Delete this week\'s record?')) return;
+  state.weeks = state.weeks.filter(w=>w.id!==id);
+  writeState();
+  renderAll();
+}
+
+/* ---------------- render dashboard ---------------- */
+function renderAll(){
+  const weeks = [...state.weeks].sort((a,b)=>a.order-b.order);
+  nextOrder = weeks.length ? Math.max(...weeks.map(w=>w.order))+1 : 1;
+
+  // history table
+  const body = $('historyBody');
+  body.innerHTML='';
+  $('historyEmpty').style.display = weeks.length ? 'none':'block';
+  [...weeks].reverse().forEach(w=>{
+    const c = computeWeek(w);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(w.weekLabel)}</td>
+      <td>${fmt(c.revTotal)}</td>
+      <td>${fmt(c.opexTotal)}</td>
+      <td style="color:${c.pnl>=0?'var(--good)':'var(--bad)'};font-weight:600;">${fmt(c.pnl)}</td>
+      <td class="row-actions">
+        <button class="small" onclick="editWeek('${w.id}')">Edit</button>
+        <button class="small danger" onclick="deleteWeek('${w.id}')">Delete</button>
+      </td>`;
+    body.appendChild(tr);
+  });
+
+  // comparison box (latest two by order)
+  const cbox = $('comparisonBox');
+  if(weeks.length===0){
+    cbox.innerHTML = '<div class="empty">Add at least one week to see comparison.</div>';
+  } else {
+    const curr = weeks[weeks.length-1];
+    const prev = weeks.length>1 ? weeks[weeks.length-2] : null;
+    const cc = computeWeek(curr);
+    const pc = prev ? computeWeek(prev) : null;
+
+    function deltaHtml(currVal, prevVal){
+      if(prev===null) return '<span class="delta flat">no prior week</span>';
+      const diff = currVal - prevVal;
+      const pct = prevVal!==0 ? (diff/Math.abs(prevVal)*100) : 0;
+      const cls = diff>0?'up':diff<0?'down':'flat';
+      const arrow = diff>0?'▲':diff<0?'▼':'—';
+      return `<span class="delta ${cls}">${arrow} ${fmt(Math.abs(diff))} (${pct.toFixed(1)}%)</span>`;
+    }
+
+    cbox.innerHTML = `
+      <div style="margin-bottom:10px;font-size:13px;color:var(--muted);">
+        <b style="color:var(--text)">${escapeHtml(curr.weekLabel)}</b>${prev?` vs <b style="color:var(--text)">${escapeHtml(prev.weekLabel)}</b>`:''}
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="label">Revenue</div><div class="value">${fmt(cc.revTotal)}</div>${deltaHtml(cc.revTotal, pc?pc.revTotal:0)}</div>
+        <div class="kpi"><div class="label">Op-Ex</div><div class="value">${fmt(cc.opexTotal)}</div>${deltaHtml(cc.opexTotal, pc?pc.opexTotal:0)}</div>
+        <div class="kpi"><div class="label">P&L</div><div class="value" style="color:${cc.pnl>=0?'var(--good)':'var(--bad)'}">${fmt(cc.pnl)}</div>${deltaHtml(cc.pnl, pc?pc.pnl:0)}</div>
+      </div>
+      <table>
+        <thead><tr><th></th><th>YouTube</th><th>Facebook</th><th>Advertisement</th><th>Courses</th></tr></thead>
+        <tbody>
+          <tr><td>${escapeHtml(curr.weekLabel)}</td><td>${fmt(curr.revenue.youtube)}</td><td>${fmt(curr.revenue.facebook)}</td><td>${fmt(curr.revenue.advertisement)}</td><td>${fmt(curr.revenue.courses)}</td></tr>
+          ${prev?`<tr><td>${escapeHtml(prev.weekLabel)}</td><td>${fmt(prev.revenue.youtube)}</td><td>${fmt(prev.revenue.facebook)}</td><td>${fmt(prev.revenue.advertisement)}</td><td>${fmt(prev.revenue.courses)}</td></tr>`:''}
+        </tbody>
+      </table>
+    `;
+  }
+
+  // next plan box — show latest week's projections
+  const pbox = $('nextPlanBox');
+  const latest = weeks[weeks.length-1];
+  if(!latest || !latest.projections || latest.projections.length===0){
+    pbox.innerHTML = '<div class="empty">No projections added yet.</div>';
+  } else {
+    pbox.innerHTML = `<table><thead><tr><th>Title</th><th>Type</th></tr></thead><tbody>
+      ${latest.projections.map(p=>`<tr><td>${escapeHtml(p.title)}</td><td><span class="tag">${escapeHtml(p.type||'—')}</span></td></tr>`).join('')}
+    </tbody></table>`;
+  }
+}
+
+/* ---------------- init ---------------- */
+loadFromLocalStorage();
+updateFileStatus(null);
+liveCalc();
+renderAll();
+</script>
+</body>
+</html>

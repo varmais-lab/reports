@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SumanTV — All Departments Dashboard</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>SumanTV <span>All Departments Dashboard</span></h1>
+      <p>Company-wide weekly revenue, expenditure & P&L — pulled live from each department's JSON file</p>
+    </div>
+    <nav class="pages">
+      <a href="index.html">Home</a>
+      <a href="department-report.html">Submit Report</a>
+      <a href="admin-dashboard.html" class="active">Admin — All Departments</a>
+    </nav>
+  </header>
+
+  <!-- Optional admin PIN gate -->
+  <div class="card login-card" id="loginCard">
+    <h2>Admin Sign-In</h2>
+    <div class="field">
+      <label>Admin PIN</label>
+      <input type="password" id="adminPin" placeholder="Enter Admin PIN">
+    </div>
+    <button class="primary" onclick="unlock()" style="width:100%;">View Dashboard</button>
+    <p style="font-size:11px;color:var(--muted);margin-top:14px;">
+      This is a simple internal safeguard, not secure authentication.
+    </p>
+  </div>
+
+  <div id="protocolWarning" class="card" style="display:none;border-color:var(--bad);">
+    <h2 style="color:var(--bad);">⚠ Can't Load Department Files</h2>
+    <p style="font-size:13px;color:var(--text);">
+      This page is open as <code id="currentProtocol"></code>. Browsers block <code>fetch()</code> between local files opened this way,
+      so the department JSON files cannot be read — that's why every department shows "No submissions yet" even if the files have data.
+    </p>
+    <p style="font-size:13px;color:var(--muted);">To fix it, do one of the following:</p>
+    <ul style="font-size:13px;color:var(--muted);line-height:1.8;">
+      <li><b>For local testing:</b> open a terminal in this folder and run <code>python -m http.server 8000</code>, then visit <code>http://localhost:8000/admin-dashboard.html</code> instead of double-clicking the file.</li>
+      <li><b>For real use:</b> push this <code>v2</code> folder to your GitHub Pages repo (same place V1 is deployed) and open it from <code>https://varmais-lab.github.io/reports/v2/admin-dashboard.html</code> — this works exactly like V1 does, no server needed.</li>
+    </ul>
+  </div>
+
+  <div id="appArea" style="display:none;">
+    <div class="filebar">
+      <span class="status" id="loadStatus">Loading department data…</span>
+      <button class="small" onclick="loadAll()">🔄 Refresh</button>
+      <button class="small ghost" onclick="window.print()">🖨 Print for meeting</button>
+      <button class="small ghost" onclick="lock()">🔒 Lock</button>
+    </div>
+
+    <div class="card">
+      <h2>Company-Wide Totals (Latest Week per Department)</h2>
+      <div class="company-totals" id="companyTotals"></div>
+    </div>
+
+    <div class="card">
+      <h2>Revenue by Department (Latest Week)</h2>
+      <div id="revBars"></div>
+    </div>
+
+    <div class="card">
+      <h2>Departments</h2>
+      <div class="dept-grid" id="deptGrid"></div>
+    </div>
+
+    <div class="card">
+      <h2>Full History — All Departments</h2>
+      <table id="historyTable">
+        <thead>
+          <tr><th>Department</th><th>Week</th><th>Revenue</th><th>Op-Ex</th><th>P&L</th></tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+      <div class="empty" id="historyEmpty">No data yet.</div>
+    </div>
+  </div>
+
+  <footer>SumanTV Internal Tool · Reads each department's JSON file from the /data folder · Nothing is sent to any server</footer>
+</div>
+
+<script>
+/* Must match the department list/codes in department-report.html */
+const DEPARTMENTS = [
+  { name: 'Women',    code: 'women'    },
+  { name: 'Health',   code: 'health'   },
+  { name: 'Devotion', code: 'devotion' },
+  { name: 'News',     code: 'news'     },
+  { name: 'Business', code: 'business' },
+];
+const ADMIN_PIN = 'ADMIN2026'; // change this
+
+const $ = id => document.getElementById(id);
+const fmt = n => '₹' + (Math.round(n||0)).toLocaleString('en-IN');
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function unlock(){
+  if($('adminPin').value.trim() !== ADMIN_PIN){ alert('Incorrect admin PIN.'); return; }
+  $('loginCard').style.display='none';
+  if(location.protocol === 'file:'){
+    $('currentProtocol').textContent = location.protocol+'//'+location.pathname;
+    $('protocolWarning').style.display='block';
+  }
+  $('appArea').style.display='block';
+  loadAll();
+}
+function lock(){
+  $('adminPin').value='';
+  $('appArea').style.display='none';
+  $('loginCard').style.display='block';
+}
+
+function computeWeek(w){
+  const revTotal = w.revenue.youtube+w.revenue.facebook+w.revenue.advertisement+w.revenue.courses;
+  const maintCost = w.opex.teamSalaries*(w.opex.maintenancePercent/100);
+  const opexTotal = w.opex.teamSalaries+maintCost;
+  const pnl = revTotal - opexTotal;
+  return {revTotal, opexTotal, pnl};
+}
+
+let deptData = {}; // code -> {name, weeks:[]}
+let maintConfig = {};
+
+async function loadConfig(){
+  try{
+    const res = await fetch('./config.json?t='+Date.now());
+    if(!res.ok) throw new Error('not found');
+    maintConfig = await res.json();
+  }catch(e){
+    maintConfig = {};
+  }
+}
+
+async function loadAll(){
+  $('loadStatus').textContent = 'Loading department data…';
+  deptData = {};
+  await loadConfig();
+  await Promise.all(DEPARTMENTS.map(async d=>{
+    try{
+      const res = await fetch('./'+d.code+'.json?t='+Date.now());
+      if(!res.ok) throw new Error('not found');
+      const json = await res.json();
+      deptData[d.code] = { name: d.name, weeks: (json.weeks||[]).slice().sort((a,b)=>a.order-b.order) };
+    }catch(e){
+      deptData[d.code] = { name: d.name, weeks: [] };
+    }
+  }));
+  $('loadStatus').textContent = 'Loaded '+new Date().toLocaleString('en-IN')+' · Data reflects each department\'s last saved JSON file';
+  render();
+}
+
+function render(){
+  // Company totals
+  let totalRev=0, totalOpex=0, totalPnl=0, anyData=false;
+  DEPARTMENTS.forEach(d=>{
+    const weeks = deptData[d.code].weeks;
+    if(weeks.length){
+      anyData=true;
+      const c = computeWeek(weeks[weeks.length-1]);
+      totalRev+=c.revTotal; totalOpex+=c.opexTotal; totalPnl+=c.pnl;
+    }
+  });
+  $('companyTotals').innerHTML = `
+    <div class="kpi"><div class="label">Total Revenue</div><div class="value">${fmt(totalRev)}</div></div>
+    <div class="kpi"><div class="label">Total Op-Ex</div><div class="value">${fmt(totalOpex)}</div></div>
+    <div class="kpi"><div class="label">Total P&L</div><div class="value" style="color:${totalPnl>=0?'var(--good)':'var(--bad)'}">${fmt(totalPnl)}</div></div>
+  `;
+
+  // Revenue bars
+  const maxRev = Math.max(1, ...DEPARTMENTS.map(d=>{
+    const weeks = deptData[d.code].weeks;
+    return weeks.length ? computeWeek(weeks[weeks.length-1]).revTotal : 0;
+  }));
+  $('revBars').innerHTML = anyData ? DEPARTMENTS.map(d=>{
+    const weeks = deptData[d.code].weeks;
+    const rev = weeks.length ? computeWeek(weeks[weeks.length-1]).revTotal : 0;
+    const pct = Math.max(2, (rev/maxRev*100));
+    return `<div class="bar-row">
+      <span>${d.name}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;"></div></div>
+      <span style="text-align:right;">${fmt(rev)}</span>
+    </div>`;
+  }).join('') : '<div class="empty">No department data yet.</div>';
+
+  // Department cards
+  $('deptGrid').innerHTML = DEPARTMENTS.map(d=>{
+    const weeks = deptData[d.code].weeks;
+    if(!weeks.length){
+      return `<div class="dept-card"><h3>${d.name}</h3><div class="empty">No submissions yet</div></div>`;
+    }
+    const curr = weeks[weeks.length-1];
+    const prev = weeks.length>1 ? weeks[weeks.length-2] : null;
+    const cc = computeWeek(curr);
+    const pc = prev ? computeWeek(prev) : null;
+    function deltaHtml(cv,pv){
+      if(!prev) return '<span class="delta flat">no prior week</span>';
+      const diff=cv-pv; const pct = pv!==0?(diff/Math.abs(pv)*100):0;
+      const cls = diff>0?'up':diff<0?'down':'flat';
+      const arrow = diff>0?'▲':diff<0?'▼':'—';
+      return `<span class="delta ${cls}">${arrow} ${pct.toFixed(1)}%</span>`;
+    }
+    return `<div class="dept-card">
+      <h3>${d.name} <span class="weeklabel">${escapeHtml(curr.weekLabel)} · Maint ${maintConfig[d.code] ?? '—'}%</span></h3>
+      <div class="calc-line"><span>Revenue</span><b>${fmt(cc.revTotal)} ${deltaHtml(cc.revTotal, pc?pc.revTotal:0)}</b></div>
+      <div class="calc-line"><span>Op-Ex</span><b>${fmt(cc.opexTotal)} ${deltaHtml(cc.opexTotal, pc?pc.opexTotal:0)}</b></div>
+      <div class="calc-line"><span>P&L</span><b style="color:${cc.pnl>=0?'var(--good)':'var(--bad)'}">${fmt(cc.pnl)} ${deltaHtml(cc.pnl, pc?pc.pnl:0)}</b></div>
+    </div>`;
+  }).join('');
+
+  // Full history table
+  let rows = [];
+  DEPARTMENTS.forEach(d=>{
+    deptData[d.code].weeks.forEach(w=>{
+      const c = computeWeek(w);
+      rows.push({dept:d.name, week:w.weekLabel, order:w.order, ...c});
+    });
+  });
+  $('historyEmpty').style.display = rows.length ? 'none' : 'block';
+  $('historyBody').innerHTML = rows.map(r=>`
+    <tr>
+      <td>${escapeHtml(r.dept)}</td>
+      <td>${escapeHtml(r.week)}</td>
+      <td>${fmt(r.revTotal)}</td>
+      <td>${fmt(r.opexTotal)}</td>
+      <td style="color:${r.pnl>=0?'var(--good)':'var(--bad)'};font-weight:600;">${fmt(r.pnl)}</td>
+    </tr>`).join('');
+}
+</script>
+</body>
+</html>
